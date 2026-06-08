@@ -33,3 +33,4 @@ jobs:
         with:
           name: tweak
           path: .theos/_/obj/*.deb
+          if-no-files-found: warn
