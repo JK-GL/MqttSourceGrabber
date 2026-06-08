@@ -172,12 +172,14 @@ static MqttFloatingButton *_shared = nil;
 }
 
 - (UIWindow *)activeWindow {
-    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-        if (![scene isKindOfClass:[UIWindowScene class]]) continue;
-        UIWindowScene *ws = (UIWindowScene *)scene;
-        if (ws.activationState != UISceneActivationStateForegroundActive) continue;
-        for (UIWindow *w in ws.windows) if (w.isKeyWindow) return w;
-        if (ws.windows.count) return ws.windows.firstObject;
+    if (@available(iOS 13.0, *)) {
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if (![scene isKindOfClass:[UIWindowScene class]]) continue;
+            UIWindowScene *ws = (UIWindowScene *)scene;
+            if (ws.activationState != UISceneActivationStateForegroundActive) continue;
+            for (UIWindow *w in ws.windows) if (w.isKeyWindow) return w;
+            if (ws.windows.count) return ws.windows.firstObject;
+        }
     }
     return nil;
 }
@@ -407,9 +409,6 @@ extern OSStatus SecItemAdd(CFDictionaryRef attributes, CFTypeRef *result);
 
 static OSStatus (*orig_SecItemCopyMatching)(CFDictionaryRef query, CFTypeRef *result);
 static OSStatus (*orig_SecItemAdd)(CFDictionaryRef attributes, CFTypeRef *result);
-
-static NSString *kKnownUsername = @"d4a107b765f38550d13a24b54fdcdecf";
-static NSString *kKnownPassword = @"7c039ddfbdad50f3d0caf974fbcd5a5f";
 
 static OSStatus hook_SecItemCopyMatching(CFDictionaryRef query, CFTypeRef *result) {
     OSStatus status = orig_SecItemCopyMatching(query, result);
