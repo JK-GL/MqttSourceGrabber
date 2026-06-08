@@ -19,6 +19,10 @@ jobs:
           path: theos
           submodules: recursive
 
+      - name: Install ldid
+        run: |
+          brew install ldid
+
       - name: Build
         run: |
           export THEOS=theos
