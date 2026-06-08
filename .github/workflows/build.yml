@@ -32,5 +32,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tweak
-          path: .theos/_/obj/*.deb
+          path: |
+            .theos/_/obj/*.deb
+            .theos/_/packages/*.deb
+            packages/*.deb
           if-no-files-found: warn
