@@ -1,0 +1,31 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Theos
+        uses: actions/checkout@v4
+        with:
+          repository: theos/theos
+          path: theos
+          submodules: recursive
+
+      - name: Build
+        run: |
+          export THEOS=theos
+          make package
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tweak
+          path: .theos/_/obj/*.deb
