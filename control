@@ -1,9 +1,9 @@
 Package: com.wuling.mqttsource
 Name: MqttSourceGrabber
 Depends: mobilesubstrate
-Version: 1.0.0
+Version: 1.0.1
 Architecture: iphoneos-arm64
-Description: 搜索 MQTT 凭据来源
+Description: MQTT 凭据来源搜索工具 (Dopamine rootless)
 Maintainer: JK
 Author: JK
 Section: Tweaks
