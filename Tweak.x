@@ -398,11 +398,90 @@ static void logFound(NSString *source, NSString *key, id value) {
 
 %end
 
+// ============================================
+// MARK: - Hook Keychain (SecItem)
+// ============================================
+
+extern OSStatus SecItemCopyMatching(CFDictionaryRef query, CFTypeRef *result);
+extern OSStatus SecItemAdd(CFDictionaryRef attributes, CFTypeRef *result);
+
+static OSStatus (*orig_SecItemCopyMatching)(CFDictionaryRef query, CFTypeRef *result);
+static OSStatus (*orig_SecItemAdd)(CFDictionaryRef attributes, CFTypeRef *result);
+
+static NSString *kKnownUsername = @"d4a107b765f38550d13a24b54fdcdecf";
+static NSString *kKnownPassword = @"7c039ddfbdad50f3d0caf974fbcd5a5f";
+
+static OSStatus hook_SecItemCopyMatching(CFDictionaryRef query, CFTypeRef *result) {
+    OSStatus status = orig_SecItemCopyMatching(query, result);
+    
+    if (status == errSecSuccess && result && *result) {
+        NSDictionary *queryDict = (__bridge NSDictionary *)query;
+        NSString *service = queryDict[(__bridge id)kSecAttrService];
+        NSString *account = queryDict[(__bridge id)kSecAttrAccount];
+        
+        // 检查返回的数据
+        if (CFGetTypeID(*result) == CFDataGetTypeID()) {
+            NSData *data = (__bridge NSData *)*result;
+            NSString *value = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+            
+            if (value && ([value isEqualToString:kKnownUsername] || [value isEqualToString:kKnownPassword])) {
+                [[MqttLogManager sharedInstance] addLog:@"[MQTT KEYCHAIN] ✅ 读取到 MQTT 凭据!"];
+                [[MqttLogManager sharedInstance] addLog:[NSString stringWithFormat:@"[MQTT KEYCHAIN]   Service: %@", service]];
+                [[MqttLogManager sharedInstance] addLog:[NSString stringWithFormat:@"[MQTT KEYCHAIN]   Account: %@", account]];
+                [[MqttLogManager sharedInstance] addLog:[NSString stringWithFormat:@"[MQTT KEYCHAIN]   Value: %@", value]];
+                
+                NSArray *callStack = [NSThread callStackSymbols];
+                [[MqttLogManager sharedInstance] addLog:@"[MQTT KEYCHAIN] 堆栈:"];
+                for (NSString *symbol in callStack) {
+                    if ([symbol containsString:@"LingLingBang"]) {
+                        [[MqttLogManager sharedInstance] addLog:[NSString stringWithFormat:@"[MQTT KEYCHAIN]   %@", symbol]];
+                    }
+                }
+            }
+        }
+    }
+    
+    return status;
+}
+
+static OSStatus hook_SecItemAdd(CFDictionaryRef attributes, CFTypeRef *result) {
+    NSDictionary *attrDict = (__bridge NSDictionary *)attributes;
+    NSString *service = attrDict[(__bridge id)kSecAttrService];
+    NSString *account = attrDict[(__bridge id)kSecAttrAccount];
+    NSData *data = attrDict[(__bridge id)kSecValueData];
+    
+    if (data) {
+        NSString *value = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+        
+        if (value && ([value isEqualToString:kKnownUsername] || [value isEqualToString:kKnownPassword])) {
+            [[MqttLogManager sharedInstance] addLog:@"[MQTT KEYCHAIN] ✅ 写入 MQTT 凭据!"];
+            [[MqttLogManager sharedInstance] addLog:[NSString stringWithFormat:@"[MQTT KEYCHAIN]   Service: %@", service]];
+            [[MqttLogManager sharedInstance] addLog:[NSString stringWithFormat:@"[MQTT KEYCHAIN]   Account: %@", account]];
+            [[MqttLogManager sharedInstance] addLog:[NSString stringWithFormat:@"[MQTT KEYCHAIN]   Value: %@", value]];
+            
+            NSArray *callStack = [NSThread callStackSymbols];
+            [[MqttLogManager sharedInstance] addLog:@"[MQTT KEYCHAIN] 堆栈:"];
+            for (NSString *symbol in callStack) {
+                if ([symbol containsString:@"LingLingBang"]) {
+                    [[MqttLogManager sharedInstance] addLog:[NSString stringWithFormat:@"[MQTT KEYCHAIN]   %@", symbol]];
+                }
+            }
+        }
+    }
+    
+    return orig_SecItemAdd(attributes, result);
+}
+
 %ctor {
     %init;
     
+    // Hook Keychain 函数
+    MSHookFunction(SecItemCopyMatching, hook_SecItemCopyMatching, (void **)&orig_SecItemCopyMatching);
+    MSHookFunction(SecItemAdd, hook_SecItemAdd, (void **)&orig_SecItemAdd);
+    
     NSLog(@"[MQTT SOURCE GRABBER] 🔍 Tweak 已加载！");
     [[MqttLogManager sharedInstance] addLog:@"[MQTT SOURCE] 🔍 Tweak 已加载，开始搜索凭据来源..."];
+    [[MqttLogManager sharedInstance] addLog:@"[MQTT SOURCE] 已 Hook Keychain (SecItem)"];
     
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [[MqttFloatingButton shared] installIfNeeded];
